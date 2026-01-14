@@ -106,7 +106,12 @@ import { revalidatePath } from "next/cache";
 import Product from "../models/product.model";
 import { connectToDB } from "../mongoose";
 import { scrapeAmazonProduct } from "../scraper";
-import { getAveragePrice, getHighestPrice, getLowestPrice } from "../utils";
+import {
+  getAveragePrice,
+  getHighestPrice,
+  getLowestPrice,
+} from "../utils";
+import { PriceHistoryItem } from "@/types";
 
 const SCRAPE_COOLDOWN_MS = 24 * 60 * 60 * 1000; // 24 hours
 
@@ -118,11 +123,12 @@ export async function scrapeAndStoreProduct(productUrl: string) {
 
     const scrapedProduct = await scrapeAmazonProduct(productUrl);
 
-    // 🚫 unreleased / invalid product
+    // ❌ Invalid / unreleased product
     if (
       !scrapedProduct ||
       !scrapedProduct.title ||
-      (!scrapedProduct.currentPrice && !scrapedProduct.originalPrice)
+      (!scrapedProduct.currentPrice &&
+        !scrapedProduct.originalPrice)
     ) {
       return null;
     }
@@ -131,7 +137,7 @@ export async function scrapeAndStoreProduct(productUrl: string) {
       url: scrapedProduct.url,
     });
 
-    // ⏱ cooldown check
+    // ⏱️ Cooldown check (avoid scraping same product daily)
     if (
       existingProduct &&
       Date.now() - new Date(existingProduct.updatedAt).getTime() <
@@ -143,7 +149,8 @@ export async function scrapeAndStoreProduct(productUrl: string) {
     let productData = scrapedProduct;
 
     if (existingProduct) {
-      const updatedPriceHistory = [
+      // ✅ Explicit typing (THIS FIXES BUILD)
+      const updatedPriceHistory: PriceHistoryItem[] = [
         ...existingProduct.priceHistory,
         {
           price: scrapedProduct.currentPrice,
@@ -159,13 +166,13 @@ export async function scrapeAndStoreProduct(productUrl: string) {
         averagePrice: getAveragePrice(updatedPriceHistory),
       };
     } else {
-      // 🆕 first time product
+      // 🆕 First time product
       productData.priceHistory = [
         {
           price: scrapedProduct.currentPrice,
           date: new Date(),
         },
-      ];
+      ] as PriceHistoryItem[];
     }
 
     const newProduct = await Product.findOneAndUpdate(
@@ -186,9 +193,7 @@ export async function scrapeAndStoreProduct(productUrl: string) {
 export async function getProductById(productId: string) {
   try {
     await connectToDB();
-
-    const product = await Product.findById(productId);
-    return product || null;
+    return await Product.findById(productId);
   } catch (error) {
     console.log(error);
     return null;
