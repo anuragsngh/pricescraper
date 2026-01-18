@@ -22,35 +22,44 @@ export async function GET(req: Request) {
   try {
     await connectToDB();
 
-    const products = await Product.find();
+    // ✅ Pick ONE least recently updated product
+    const product = await Product.findOne().sort({ updatedAt: 1 });
 
-    for (const product of products) {
-      const scraped = await scrapeAmazonProduct(product.url);
-      if (!scraped?.currentPrice) continue;
-
-      const updatedPriceHistory = [
-        ...product.priceHistory,
-        {
-          price: scraped.currentPrice,
-          date: new Date(),
-        },
-      ];
-
-      await Product.findByIdAndUpdate(product._id, {
-        currentPrice: scraped.currentPrice,
-        priceHistory: updatedPriceHistory,
-        lowestPrice: getLowestPrice(updatedPriceHistory),
-        highestPrice: getHighestPrice(updatedPriceHistory),
-        averagePrice: getAveragePrice(updatedPriceHistory),
+    if (!product) {
+      return NextResponse.json({
+        success: true,
+        message: "No products found",
       });
-
-      // ⏱ polite delay (VERY IMPORTANT)
-      await new Promise((res) => setTimeout(res, 4000));
     }
+
+    const scraped = await scrapeAmazonProduct(product.url);
+
+    if (!scraped?.currentPrice) {
+      return NextResponse.json({
+        success: true,
+        message: "Scrape failed or price missing",
+      });
+    }
+
+    const updatedPriceHistory = [
+      ...product.priceHistory,
+      {
+        price: scraped.currentPrice,
+        date: new Date(),
+      },
+    ];
+
+    await Product.findByIdAndUpdate(product._id, {
+      currentPrice: scraped.currentPrice,
+      priceHistory: updatedPriceHistory,
+      lowestPrice: getLowestPrice(updatedPriceHistory),
+      highestPrice: getHighestPrice(updatedPriceHistory),
+      averagePrice: getAveragePrice(updatedPriceHistory),
+    });
 
     return NextResponse.json({
       success: true,
-      updatedProducts: products.length,
+      updatedProduct: product._id.toString(),
     });
   } catch (error: any) {
     return NextResponse.json(
