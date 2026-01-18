@@ -1,0 +1,17 @@
+name: Daily Price Scraping
+
+on:
+  schedule:
+    - cron: "0 3 * * *"   # daily at 3 AM UTC
+  workflow_dispatch:
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Call scraping endpoint
+        run: |
+          curl -X GET \
+          -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+          https://pricescraper-beta.vercel.app/api/cron/scrape
