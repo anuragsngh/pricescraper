@@ -25,13 +25,21 @@ export async function scrapeAmazonProduct(url: string) {
     host: "brd.superproxy.io",
     port,
     rejectUnauthorized: false,
+    timeout: 20000, // ⏱️ IMPORTANT
+    headers: {
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36",
+      Accept:
+        "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+      "Accept-Language": "en-IN,en;q=0.9",
+    },
   };
 
   try {
     // 🔄 Fetch page
     const response = await axios.get(url, options);
 
-    // 🔍 STEP 1: DEBUG AMAZON BLOCK
+    // 🔍 Debug signal (keep this)
     console.log("SCRAPED HTML LENGTH:", response.data?.length);
 
     const $ = cheerio.load(response.data);
@@ -39,7 +47,7 @@ export async function scrapeAmazonProduct(url: string) {
     // 🏷️ Title
     const title = $("#productTitle").text().trim();
 
-    // 💰 STEP 2: STRONG PRICE SELECTORS
+    // 💰 Prices
     const currentPrice = extractPrice(
       $(".priceToPay span.a-price-whole"),
       $(".a-price-whole"),
@@ -57,12 +65,11 @@ export async function scrapeAmazonProduct(url: string) {
     );
 
     // 📦 Stock
-    const outOfStock =
-      $("#availability span")
-        .text()
-        .trim()
-        .toLowerCase()
-        .includes("unavailable");
+    const outOfStock = $("#availability span")
+      .text()
+      .trim()
+      .toLowerCase()
+      .includes("unavailable");
 
     // 🖼️ Images
     const images =
@@ -85,14 +92,14 @@ export async function scrapeAmazonProduct(url: string) {
 
     // 🚫 HARD FAIL GUARD
     if (!title || (!currentPrice && !originalPrice)) {
-      console.warn("Amazon scrape failed: missing title or price");
+      console.warn("Amazon scrape blocked or incomplete. Skipping.");
       return null;
     }
 
     // 📦 FINAL DATA (unchanged shape)
     const priceValue = Number(currentPrice) || Number(originalPrice);
 
-    const data = {
+    return {
       url,
       currency: currency || "₹",
       image: imageUrls[0],
@@ -110,9 +117,18 @@ export async function scrapeAmazonProduct(url: string) {
       highestPrice: priceValue,
       averagePrice: priceValue,
     };
-
-    return data;
   } catch (error: any) {
+    // 🧠 EXPECTED FAILURES (Amazon blocks)
+    if (error?.response?.status === 500) {
+      console.warn("Amazon returned 500 — retry next cron run");
+      return null;
+    }
+
+    if (error?.code === "ECONNABORTED") {
+      console.warn("Amazon request timed out");
+      return null;
+    }
+
     console.error("Amazon scrape error:", error.message);
     return null;
   }
