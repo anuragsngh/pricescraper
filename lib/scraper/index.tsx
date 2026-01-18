@@ -1,13 +1,17 @@
-"use server"
+"use server";
 
-import axios from 'axios';
-import * as cheerio from 'cheerio';
-import { extractCurrency, extractDescription, extractPrice } from '../utils';
+import axios from "axios";
+import * as cheerio from "cheerio";
+import {
+  extractCurrency,
+  extractDescription,
+  extractPrice,
+} from "../utils";
 
 export async function scrapeAmazonProduct(url: string) {
-  if(!url) return;
+  if (!url) return null;
 
-  // BrightData proxy configuration
+  // 🌐 BrightData proxy
   const username = String(process.env.BRIGHT_DATA_USERNAME);
   const password = String(process.env.BRIGHT_DATA_PASSWORD);
   const port = 22225;
@@ -18,72 +22,98 @@ export async function scrapeAmazonProduct(url: string) {
       username: `${username}-session-${session_id}`,
       password,
     },
-    host: 'brd.superproxy.io',
+    host: "brd.superproxy.io",
     port,
     rejectUnauthorized: false,
-  }
+  };
 
   try {
-    // Fetch the product page
+    // 🔄 Fetch page
     const response = await axios.get(url, options);
+
+    // 🔍 STEP 1: DEBUG AMAZON BLOCK
+    console.log("SCRAPED HTML LENGTH:", response.data?.length);
+
     const $ = cheerio.load(response.data);
 
-    // Extract the product title
-    const title = $('#productTitle').text().trim();
+    // 🏷️ Title
+    const title = $("#productTitle").text().trim();
+
+    // 💰 STEP 2: STRONG PRICE SELECTORS
     const currentPrice = extractPrice(
-      $('.priceToPay span.a-price-whole'),
-      $('.a.size.base.a-color-price'),
-      $('.a-button-selected .a-color-base'),
+      $(".priceToPay span.a-price-whole"),
+      $(".a-price-whole"),
+      $(".a-offscreen"),
+      $("#corePrice_feature_div span.a-offscreen"),
+      $("[data-a-color-price]")
     );
 
     const originalPrice = extractPrice(
-      $('#priceblock_ourprice'),
-      $('.a-price.a-text-price span.a-offscreen'),
-      $('#listPrice'),
-      $('#priceblock_dealprice'),
-      $('.a-size-base.a-color-price')
+      $("#priceblock_ourprice"),
+      $("#priceblock_dealprice"),
+      $(".a-price.a-text-price span.a-offscreen"),
+      $("#listPrice"),
+      $(".a-offscreen")
     );
 
-    const outOfStock = $('#availability span').text().trim().toLowerCase() === 'currently unavailable';
+    // 📦 Stock
+    const outOfStock =
+      $("#availability span")
+        .text()
+        .trim()
+        .toLowerCase()
+        .includes("unavailable");
 
-    const images = 
-      $('#imgBlkFront').attr('data-a-dynamic-image') || 
-      $('#landingImage').attr('data-a-dynamic-image') ||
-      '{}'
+    // 🖼️ Images
+    const images =
+      $("#imgBlkFront").attr("data-a-dynamic-image") ||
+      $("#landingImage").attr("data-a-dynamic-image") ||
+      "{}";
 
     const imageUrls = Object.keys(JSON.parse(images));
 
-    const currency = extractCurrency($('.a-price-symbol'))
-    const discountRate = $('.savingsPercentage').text().replace(/[-%]/g, "");
+    // 💱 Currency
+    const currency = extractCurrency($(".a-price-symbol"));
 
-    const description = extractDescription($)
+    // 📉 Discount
+    const discountRate = $(".savingsPercentage")
+      .text()
+      .replace(/[-%]/g, "");
 
-    // Construct data object with scraped information
+    // 📝 Description
+    const description = extractDescription($);
+
+    // 🚫 HARD FAIL GUARD
+    if (!title || (!currentPrice && !originalPrice)) {
+      console.warn("Amazon scrape failed: missing title or price");
+      return null;
+    }
+
+    // 📦 FINAL DATA (unchanged shape)
+    const priceValue = Number(currentPrice) || Number(originalPrice);
+
     const data = {
       url,
-      currency: currency || '$',
+      currency: currency || "₹",
       image: imageUrls[0],
       title,
-      currentPrice: Number(currentPrice) || Number(originalPrice),
-      originalPrice: Number(originalPrice) || Number(currentPrice),
-      ///////////
-      priceHistory: [
-  { price: Number(currentPrice) || Number(originalPrice) }
-],
-// new chngessssssssssssssssss
-      discountRate: Number(discountRate),
-      category: 'category',
-      reviewsCount:100,
+      currentPrice: priceValue,
+      originalPrice: Number(originalPrice) || priceValue,
+      priceHistory: [{ price: priceValue }],
+      discountRate: Number(discountRate) || 0,
+      category: "category",
+      reviewsCount: 100,
       stars: 4.5,
       isOutOfStock: outOfStock,
       description,
-      lowestPrice: Number(currentPrice) || Number(originalPrice),
-      highestPrice: Number(originalPrice) || Number(currentPrice),
-      averagePrice: Number(currentPrice) || Number(originalPrice),
-    }
+      lowestPrice: priceValue,
+      highestPrice: priceValue,
+      averagePrice: priceValue,
+    };
 
     return data;
   } catch (error: any) {
-    console.log(error);
+    console.error("Amazon scrape error:", error.message);
+    return null;
   }
 }
