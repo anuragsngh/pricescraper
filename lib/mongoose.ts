@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 
-let isConnected = false;// Variable to track the connection status
+let isConnected = false;
 
 export const connectToDB = async () => {
   mongoose.set('strictQuery', true);
@@ -11,7 +11,7 @@ export const connectToDB = async () => {
 
   try {
     await mongoose.connect(process.env.MONGODB_URI,{
-      serverSelectionTimeoutMS: 30000,  // 30 seconds timeout
+      serverSelectionTimeoutMS: 30000,  
   });
 
     isConnected = true;

@@ -9,13 +9,13 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
-type Point = {
+export type ChartPoint = {
   date: string;
   price?: number;
   forecast?: number;
 };
 
-const PriceChart = ({ data }: { data: Point[] }) => {
+const PriceChart = ({ data }: { data: ChartPoint[] }) => {
   return (
     <div className="w-full h-72 mt-6">
       <ResponsiveContainer width="100%" height="100%">
@@ -28,14 +28,16 @@ const PriceChart = ({ data }: { data: Point[] }) => {
           <Line
             type="monotone"
             dataKey="price"
+            stroke="#2563eb"
             strokeWidth={2}
             dot={false}
           />
 
-          {/* Forecast line */}
+          {/* Forecast */}
           <Line
             type="monotone"
             dataKey="forecast"
+            stroke="#dc2626"
             strokeDasharray="5 5"
             strokeWidth={2}
             dot={false}

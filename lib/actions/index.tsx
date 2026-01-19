@@ -113,7 +113,7 @@ import {
 } from "../utils";
 import { PriceHistoryItem } from "@/types";
 
-const SCRAPE_COOLDOWN_MS = 24 * 60 * 60 * 1000; // 24 hours
+const SCRAPE_COOLDOWN_MS = 24 * 60 * 60 * 1000; 
 
 export async function scrapeAndStoreProduct(productUrl: string) {
   if (!productUrl) return null;
@@ -123,7 +123,6 @@ export async function scrapeAndStoreProduct(productUrl: string) {
 
     const scrapedProduct = await scrapeAmazonProduct(productUrl);
 
-    // ❌ Invalid / unreleased product
     if (
       !scrapedProduct ||
       !scrapedProduct.title ||
@@ -137,7 +136,6 @@ export async function scrapeAndStoreProduct(productUrl: string) {
       url: scrapedProduct.url,
     });
 
-    // ⏱️ Cooldown check (avoid scraping same product daily)
     if (
       existingProduct &&
       Date.now() - new Date(existingProduct.updatedAt).getTime() <
@@ -149,7 +147,6 @@ export async function scrapeAndStoreProduct(productUrl: string) {
     let productData = scrapedProduct;
 
     if (existingProduct) {
-      // ✅ Explicit typing (THIS FIXES BUILD)
       const updatedPriceHistory: PriceHistoryItem[] = [
         ...existingProduct.priceHistory,
         {
@@ -166,7 +163,6 @@ export async function scrapeAndStoreProduct(productUrl: string) {
         averagePrice: getAveragePrice(updatedPriceHistory),
       };
     } else {
-      // 🆕 First time product
       productData.priceHistory = [
         {
           price: scrapedProduct.currentPrice,

@@ -11,7 +11,6 @@ import {
 export async function scrapeAmazonProduct(url: string) {
   if (!url) return null;
 
-  // 🌐 BrightData proxy
   const username = String(process.env.BRIGHT_DATA_USERNAME);
   const password = String(process.env.BRIGHT_DATA_PASSWORD);
   const port = 22225;
@@ -25,7 +24,7 @@ export async function scrapeAmazonProduct(url: string) {
     host: "brd.superproxy.io",
     port,
     rejectUnauthorized: false,
-    timeout: 20000, // ⏱️ IMPORTANT
+    timeout: 20000, 
     headers: {
       "User-Agent":
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36",
@@ -36,18 +35,14 @@ export async function scrapeAmazonProduct(url: string) {
   };
 
   try {
-    // 🔄 Fetch page
     const response = await axios.get(url, options);
 
-    // 🔍 Debug signal (keep this)
     console.log("SCRAPED HTML LENGTH:", response.data?.length);
 
     const $ = cheerio.load(response.data);
 
-    // 🏷️ Title
     const title = $("#productTitle").text().trim();
 
-    // 💰 Prices
     const currentPrice = extractPrice(
       $(".priceToPay span.a-price-whole"),
       $(".a-price-whole"),
@@ -64,14 +59,12 @@ export async function scrapeAmazonProduct(url: string) {
       $(".a-offscreen")
     );
 
-    // 📦 Stock
     const outOfStock = $("#availability span")
       .text()
       .trim()
       .toLowerCase()
       .includes("unavailable");
 
-    // 🖼️ Images
     const images =
       $("#imgBlkFront").attr("data-a-dynamic-image") ||
       $("#landingImage").attr("data-a-dynamic-image") ||
@@ -79,24 +72,19 @@ export async function scrapeAmazonProduct(url: string) {
 
     const imageUrls = Object.keys(JSON.parse(images));
 
-    // 💱 Currency
     const currency = extractCurrency($(".a-price-symbol"));
 
-    // 📉 Discount
     const discountRate = $(".savingsPercentage")
       .text()
       .replace(/[-%]/g, "");
 
-    // 📝 Description
     const description = extractDescription($);
 
-    // 🚫 HARD FAIL GUARD
     if (!title || (!currentPrice && !originalPrice)) {
       console.warn("Amazon scrape blocked or incomplete. Skipping.");
       return null;
     }
 
-    // 📦 FINAL DATA (unchanged shape)
     const priceValue = Number(currentPrice) || Number(originalPrice);
 
     return {
@@ -118,7 +106,6 @@ export async function scrapeAmazonProduct(url: string) {
       averagePrice: priceValue,
     };
   } catch (error: any) {
-    // 🧠 EXPECTED FAILURES (Amazon blocks)
     if (error?.response?.status === 500) {
       console.warn("Amazon returned 500 — retry next cron run");
       return null;

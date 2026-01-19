@@ -3,7 +3,7 @@ import { Product } from "@/types";
 export async function getAIRecommendation(product: Product) {
   const n = product.priceHistory.length;
 
-  // 🔴 FALLBACK (cold start)
+  // FALLBACK (cold start)
   if (n < 2) {
     return {
       action: "WAIT",
@@ -12,7 +12,7 @@ export async function getAIRecommendation(product: Product) {
     };
   }
 
-  // 🟡 MINIMUM DATA (2–4)
+  // MINIMUM DATA (2–4)
   if (n < 5) {
     return {
       action:
@@ -24,7 +24,7 @@ export async function getAIRecommendation(product: Product) {
     };
   }
 
-  // 🟢 PROPHET (5+)
+  // PROPHET (5+)
   try {
     const res = await fetch("http://127.0.0.1:8000/predict", {
       method: "POST",

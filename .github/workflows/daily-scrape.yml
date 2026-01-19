@@ -2,7 +2,7 @@ name: Daily Price Scraping
 
 on:
   schedule:
-    - cron: "0 3 * * *"   # daily at 3 AM UTC
+    - cron: "0 3 * * *"   
   workflow_dispatch:
 
 jobs:

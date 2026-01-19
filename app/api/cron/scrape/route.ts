@@ -9,7 +9,7 @@ import {
 } from "@/lib/utils";
 
 export async function GET(req: Request) {
-  // 🔐 AUTH CHECK
+  
   const authHeader = req.headers.get("authorization");
 
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
@@ -22,7 +22,6 @@ export async function GET(req: Request) {
   try {
     await connectToDB();
 
-    // ✅ Pick ONE least recently updated product
     const product = await Product.findOne().sort({ updatedAt: 1 });
 
     if (!product) {

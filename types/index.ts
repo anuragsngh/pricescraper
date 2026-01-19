@@ -1,8 +1,7 @@
 export type PriceHistoryItem = {
   price: number;
-  date?: Date;
+  date: Date; 
 };
-
 
 export type User = {
   email: string;
@@ -16,7 +15,9 @@ export type Product = {
   title: string;
   currentPrice: number;
   originalPrice: number;
-  priceHistory: PriceHistoryItem[] | [];
+
+  priceHistory: PriceHistoryItem[];
+
   highestPrice: number;
   lowestPrice: number;
   averagePrice: number;
@@ -25,7 +26,6 @@ export type Product = {
   category: string;
   reviewsCount: number;
   stars: number;
-  isOutOfStock: Boolean;
+  isOutOfStock: boolean;
   users?: User[];
 };
-
